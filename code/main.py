@@ -7,6 +7,10 @@ expresion: str = ""
 def main():
     #ask for the initial exprecion 
     user_expression = input("Enter the expresion: ")
+    #eliminate de blank spaces 
+    user_expression = user_expression.replace(" ", "")
+    #actualizate this "−" to "-"
+    user_expression = user_expression.replace("−", "-")
     #this has to recognize aritmetic exprecions only we will check this with regex
     try:
         check(user_expression)
@@ -56,6 +60,13 @@ def procEL(operator: int) -> int:
             numero = operator + procEL(procT())
             print("numero:" + str(numero))
             return(numero)
+        case '-':
+            print("procEL deberia")
+            #in this postion we have to do the addition with the return of the next function
+            advance("-")
+            numero = operator - procEL(procT())
+            print("numero:" + str(numero))
+            return(numero)
         case _ if symbol == "":
             return operator
         case _ if symbol == ')':
@@ -71,6 +82,11 @@ def procT() -> int:
         case _ if regex.match(r'[0-9]+', symbol):
             print("procT " + symbol)
             return procTL(procP())
+        case "-":
+            #check if the next value is a number
+            if regex.match(r'[0-9]+', expresion[1]):
+                advance("-")
+                return procTL(procP())
         case _ if symbol == '(':
             print("Si")
             return procTL(procP()) 
@@ -109,14 +125,14 @@ def procP() -> int:
     global expresion
     symbol: str = expresion[0]
     match symbol:
-        case _ if regex.match(r'[0-9]+', symbol):
+        case _ if regex.match(r'[0-9]+', symbol) or symbol == "-":
             print("procT " + symbol)
             return procPL(procF())
         case _ if symbol == '(':
             print("Si")
-            return procTL(procP()) 
+            return procPL(procF()) #Este es se llama a si mismo en lugar de bajar 
         case _:
-            raise ValueError(f"Error Found in procT with the character {expresion[0]}")
+            raise ValueError(f"Error Found in procP with the character {expresion[0]}")
     pass
 
 def procPL(operator: int) -> int:
@@ -147,25 +163,44 @@ def procF() -> int:
     match symbol:
         case '(':
             advance("(")
-            resultado = procE()
+            if expresion[0] == "-" and regex.match(r'[0-9]+', expresion[1]):
+                advance("-")
+                resultado = procE() * -1
+            else:    
+                resultado = procE()
             advance(")")
             return resultado
         case _ if regex.match(r'[0-9]+', symbol):
             return(get_operator())
+        case _ if symbol == "-":
+            #check if the next value is a number
+            if regex.match(r'[0-9]+', expresion[1]):
+                advance("-")
+                numero = get_operator() * -1
+                return numero
+        case _:
+            raise ValueError(f"Error Found in procF with the character {expresion[0]}")
+        
 
 def get_operator() -> int:
     global expresion
     operator:str = ""
     for i in expresion:
-        if i in ["+", "*", ")", "^", "-", "/"]:
+        if i in ["+", "*", ")", "^", "−", "-", "/"]: 
             break
         else:
             operator += i
 
     expresion = expresion.replace(operator, "", 1)
     print("getting operator: " + operator)
-    return int(operator)
-
+    #try to convert to int if the value is double we try that too
+    try:
+        return int(operator)
+    except ValueError:
+        try:
+            return float(operator)
+        except ValueError:
+            raise ValueError(f"Error Found in get_operator with the character {expresion[0]}")
     pass
 
 def advance(symbol):

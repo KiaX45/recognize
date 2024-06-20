@@ -32,7 +32,7 @@ def procELO() -> bool:
     global expresion
     symbol = expresion[0]
     match symbol:
-        case _ if symbol == "(" or regex.match(r'[0-9]+', symbol):
+        case _ if symbol == "(" or regex.match(r'[0-9]+', symbol) or symbol == "!":
             primer_operando = procEL2()
             lista_operandos = procELO_L()
             final_expresion = f"{primer_operando}{lista_operandos}"
@@ -64,8 +64,8 @@ def procEL2() -> bool:
     global expresion
     symbol: str = expresion[0]
     match symbol:
-        case _ if regex.match(r'[0-9]+', symbol) or symbol== "(":
-            primer_operando = procER()
+        case _ if regex.match(r'[0-9]+', symbol) or symbol== "(" or symbol == "!":
+            primer_operando = procEL3()
             lista_operandos = procEL2_L()
             final_expresion = f"{primer_operando}{lista_operandos}"
             return eval(final_expresion)
@@ -82,7 +82,7 @@ def procEL2_L():
     match symbol:
         case _ if symbol == "&":
             advance("&")
-            primer_operando = procER()
+            primer_operando = procEL3()
             lista_operandos = procEL2_L()
             final_expresion = f"&{primer_operando}{lista_operandos}"
             return final_expresion
@@ -92,7 +92,17 @@ def procEL2_L():
             raise ValueError(f"Error Found in procEL2_L with the character {expresion[0]}")
     pass
 
-
+def procEL3():
+    global expresion
+    symbol = expresion[0]
+    match symbol:
+        case _ if symbol == "!":
+            advance("!")
+            return eval(f"not {procER()}")
+        case _ if regex.match(r'[0-9]+', symbol) or symbol== "(":
+            return procER()
+        case _:
+            raise ValueError(f"Error Found in EL3 with the character {expresion[0]}")
 
 
 #Fin metodos primera sección
@@ -371,7 +381,6 @@ def get_operator() -> int:
     expresion = expresion.replace(operator, "", 1)
     print("getting operator: " + operator)
     return int(operator)
-
     pass
 
 def advance(symbol):

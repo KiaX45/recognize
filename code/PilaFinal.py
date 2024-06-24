@@ -1,10 +1,14 @@
 import re as regex
+import sys
 #hola medina 
 
 pila = ["Fin"]
 expresion: str = ""
+expresion_copy: str = ""
 contador = 0
 ingnore_symbols = ["!", ">", "<", "=", "|", "&"]
+columna_counter = 1
+pilaMaximaLongitud = 0
 def main():
     pila.append(procS)
     #ask for the initial exprecion 
@@ -13,12 +17,16 @@ def main():
     user_expression = user_expression.replace(" ", "")
     #actualizate this "−" to "-"
     user_expression = user_expression.replace("−", "-")
-    #this has to recognize aritmetic exprecions only we will check this with regex
+    #this has to recognize aritmetic exprecions only we will check this with E
     try:
         check(user_expression)
     except ValueError as e:
         print(e)
         return
+    #we make a copy of the array to show if ther is any errors
+    global expresion_copy
+    expresion_copy = user_expression[:]
+    print(expresion_copy)
     #if no extrange simboles have been found we start the process
     global expresion
     expresion = user_expression
@@ -27,18 +35,51 @@ def main():
 
 def operate2():
     global pila
+    global columna_counter
+    global expresion_copy
+    global pilaMaximaLongitud
     index = 0
     while(True):
         top = pila[-1]
         if callable(top):
-            top()
-        else:
-            advance(top)
-            pila.pop()
+            try:
+                top()
+            except Exception as e:
+                print(e.args[0])
+                #we extract the symbol from the las position
+                error_message = e.args[0]
+                symbol = error_message[-1]
 
+                if symbol == "(":
+                    mensaje_error = marcar_posible_solucion(expresion_copy, columna_counter, "*")
+                    print(mensaje_error)
+                else:
+                    mensaje_error = marcar_error(expresion_copy, columna_counter, symbol)
+                    print(mensaje_error)
+                break
+        else:
+            try:
+                advance(top)
+                pila.pop()
+            except Exception as e:
+                print(f"Error encontrado en la posición {columna_counter}")
+                print(e.args[0])
+                #we extract the symbol from the las position
+                error_message = e.args[0]
+                symbol = error_message[-3]
+                mensaje_error = marcar_posible_solucion(expresion_copy, columna_counter, symbol)
+                print(mensaje_error)
+                break
+        temporal_longitud = len(pila)
+        if temporal_longitud > pilaMaximaLongitud:
+            pilaMaximaLongitud = temporal_longitud
+        
         if pila[-1] == "Fin" and expresion == "":
+            print(f"Longitud maxima Pila = {pilaMaximaLongitud - 1}")
             break
         index+=1
+
+        
 
 
 def procS():
@@ -70,7 +111,7 @@ def procELO_L():
         symbol = expresion[0]
     
     match symbol:
-        case " ":
+        case " "| ")":
             pila_logico_non_operation()
             mostrar_lista_con_indices(pila, "20")
         case "|":
@@ -126,7 +167,7 @@ def procEL2_L():
         symbol = expresion[0]
     
     match symbol:
-        case " " | "|":
+        case " " | "|" | ")":
             pila_logico_non_operation()
             mostrar_lista_con_indices(pila, "21")
         case "&":
@@ -166,18 +207,18 @@ def procEL3():
     global expresion
 
     symbol = expresion[0]
-
+    print(symbol)
     match symbol:
         case "!":
             advance("!")
             pila.pop()
             añadirElemento(cancel,0)
             procER()
-        case _ if regex.match(r'[0-9]+', symbol) or symbol == "(":
+        case _ if regex.match(r'[0-9]+', symbol) or symbol == "(" or symbol == "-":
             pila.pop()
             añadirElemento(notCancel,0)
             procER()
-            
+           
     pass
 
 
@@ -237,7 +278,7 @@ def relacional():
     
 
     match symbol:
-        case " " | ")":
+        case " " | ")" | "&" | "|":
             relacional_non_operation()
             pass
         case ">":
@@ -250,11 +291,23 @@ def relacional():
             pass
         case "=":
             advance("=")
-            procIG()
+            try:
+                procIG()
+            except:
+                symbol = "="
+                mensaje_error = marcar_posible_solucion(expresion_copy, columna_counter, symbol)
+                print(mensaje_error)
+                sys.exit()
             pass
         case "!":
             advance("!")
-            procDI()
+            try:
+                procDI()
+            except:
+                symbol = "="
+                mensaje_error = marcar_posible_solucion(expresion_copy, columna_counter, symbol)
+                print(mensaje_error)
+                sys.exit()
             pass
         case _:
             raise ValueError(f"Error Found in relacional with the character {expresion[0]}")
@@ -692,7 +745,7 @@ def procF():
             añadirElemento(temporal, 0)
             añadirElemento(relacional, 1)
             añadirElemento(getIndexOfBlanckeElement(), 0)
-            añadirElemento(procE, 0)
+            añadirElemento(procELO, 0)
             advance("(")
             mostrar_lista_con_indices(pila, "5")
             
@@ -724,31 +777,53 @@ def getIndexOfBlanckeElement():
     
 def get_operator() -> int:
     global expresion
+    global columna_counter
+    global expresion_copy
     operator:str = ""
     for i in expresion:
         if i in ["+", "*", ")", "^", "−", "-", "/", "<", ">", "=", "!", "|", "&"]: 
             break
+        elif i == "(":
+            symbol = "*"
+            mensaje_error = marcar_posible_solucion(expresion_copy, columna_counter+1, symbol)
+            print(mensaje_error)
+            sys.exit()
         else:
             operator += i
+            columna_counter += 1
 
     expresion = expresion.replace(operator, "", 1)
     print("getting operator: " + operator)
     #try to convert to int if the value is double we try that too
     try:
-        return int(operator)
+        result =  int(operator)
+        return result
     except ValueError:
         try:
-            return float(operator)
+            result =  float(operator)
+            return result
         except ValueError:
             raise ValueError(f"Error Found in get_operator with the character {expresion[0]}")
     pass
 
 def advance(symbol):
     global expresion
+    global columna_counter
+
+    if len(expresion) == 0:
+        if symbol == ")":
+            raise ValueError("Maybe you forgot to add a closing bracket ')' ")
+        else:
+            raise ValueError(f"You are probably have to add something {symbol}")
+
+
     if expresion[0] == symbol:
         expresion = expresion[1:]
+        columna_counter += 1
     else:
         raise ValueError(f"Error Found in advance with the character {expresion[0]}")
+
+
 
 def check(cadena: str) -> bool:
     prohibited_patterns = [
@@ -774,6 +849,43 @@ def respuesta():
     except:
         raise ValueError("Error Found in respuesta")
     pass
+
+def marcar_posible_solucion(cadena, posicion, simbolo):
+    # ANSI escape code para color verde
+    verde = "\033[92m"
+    # ANSI escape code para resetear el color a su estado original
+    reset = "\033[0m"
+
+    posicion =  posicion - 1
+
+    
+    parte_antes = cadena[:posicion]
+    parte_error = verde + simbolo + reset
+    parte_despues = cadena[posicion:]
+
+    cadena_con_error = parte_antes + parte_error + parte_despues
+    mensaje_error = f"Error: símbolo faltante en la posición {posicion +1}.\n{cadena_con_error}\n{' ' * posicion}{verde}^ aquí{reset}"
+
+    return mensaje_error
+
+def marcar_error(cadena, posicion, simbolo):
+    rojo = "\033[91m"
+    reset = "\033[0m"
+    
+    posicion = posicion -1 
+
+    if cadena[posicion] != simbolo:
+        raise ValueError(f"El símbolo en la posición {posicion} no coincide con '{simbolo}'.")
+
+    parte_antes = cadena[:posicion]
+    parte_error = rojo + cadena[posicion] + reset
+    parte_despues = cadena[posicion + 1:]
+    
+    cadena_con_error = parte_antes + parte_error + parte_despues
+    mensaje_error = f"Error: símbolo inesperado en la posición {posicion +1}.\n{cadena_con_error}\n{' ' * posicion}{rojo}^ aquí{reset}"
+    
+    return mensaje_error
+
 
 
 main()

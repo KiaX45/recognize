@@ -1,30 +1,29 @@
 from typing import List, Dict, Tuple, Optional, Union, Any, Callable
 import re as regex
 
-#Global exprecions
+# Global exprecions
 expresion: str = ""
 
 def main():
-    #ask for the initial exprecion 
+    # Ask for the initial expression 
     user_expression = input("Enter the expresion: ")
-    #eliminate de blank spaces 
+    # Eliminate the blank spaces 
     user_expression = user_expression.replace(" ", "")
-    #actualizate this "−" to "-"
+    # Update this "−" to "-"
     user_expression = user_expression.replace("−", "-")
-    #this has to recognize aritmetic exprecions only we will check this with regex
+    # This has to recognize arithmetic expressions only, we will check this with regex
     try:
         check(user_expression)
     except ValueError as e:
         print(e)
         return
-    #if no extrange simboles have been found we start the process
+    # If no strange symbols have been found we start the process
     global expresion
     expresion = user_expression 
     evaluate()
 
 def evaluate() -> int:
     procS()
-
 
 def procS():
     print(procE())
@@ -34,17 +33,15 @@ def procE() -> int:
     global expresion
     symbol: str = expresion[0]
     match symbol:
-        case _ if regex.match(r'[0-9]+', symbol):
-            resultado = procEL(procT())
-            print(resultado)
+        case _ if regex.match(r'[0-9]+', symbol) or symbol == "-":
+            resultado = procEL(procResta())
             return resultado
         case _ if symbol == '(':
-            return procEL(procT()) 
+            return procEL(procResta()) 
         case _ if  symbol == ')':
             return None
         case _:
             raise ValueError(f"Error Found in procE with the character {expresion[0]}")
-        
     pass
 
 def procEL(operator: int) -> int:
@@ -54,42 +51,63 @@ def procEL(operator: int) -> int:
     symbol: str = expresion[0]
     match symbol:
         case '+':
-            print("procEL deberia")
-            #in this postion we have to do the addition with the return of the next function
+            # In this position we have to do the addition with the return of the next function
             advance("+")
-            numero = operator + procEL(procT())
-            print("numero:" + str(numero))
-            return(numero)
-        case '-':
-            print("procEL deberia")
-            #in this postion we have to do the addition with the return of the next function
-            advance("-")
-            numero = operator - procEL(procT())
-            print("numero:" + str(numero))
-            return(numero)
+            numero = operator + procEL(procResta())
+            return numero
         case _ if symbol == "":
             return operator
         case _ if symbol == ')':
             return operator
         case _:
-            raise ValueError(f"Error Found in procEL with the character {expresion[0]}")
+            raise (f"Error Found in procEL with the character {expresion[0]}")
+    pass
+
+def procResta():
+    global expresion
+    symbol: str = expresion[0]
+    match symbol:
+        case _ if regex.match(r'[0-9]+', symbol) or symbol == "-":
+            resultado = procRestaL(procT())
+            return resultado
+        case _ if symbol == '(':
+            return procRestaL(procT()) 
+        case _ if  symbol == ')':
+            return None
+        case _:
+            raise ValueError(f"Error Found in procResta with the character {expresion[0]}")
+    pass
+
+def procRestaL(operator: int) -> int:
+    global expresion
+    if len(expresion) == 0:
+        return operator
+    symbol: str = expresion[0]
+    match symbol:
+        case '-':
+            # In this position we have to do the subtraction with the return of the next function
+            advance("-")
+            numero = operator - procRestaL(procT())
+            return numero
+        case "+":
+            return operator
+        case _ if symbol == "":
+            return operator
+        case _ if symbol == ')':
+            return operator
+        case _:
+            raise ValueError(f"Error Found in procRestaL with the character {expresion[0]}")
     pass
 
 def procT() -> int:
     global expresion
     symbol: str = expresion[0]
     match symbol:
-        case _ if regex.match(r'[0-9]+', symbol):
-            print("procT " + symbol)
-            return procTL(procP())
-        case "-":
-            #check if the next value is a number
-            if regex.match(r'[0-9]+', expresion[1]):
-                advance("-")
-                return procTL(procP())
+        case _ if regex.match(r'[0-9]+', symbol) or symbol == "-":
+            resultado = procDivicion()
+            return procTL(resultado)
         case _ if symbol == '(':
-            print("Si")
-            return procTL(procP()) 
+            return procTL(procDivicion()) 
         case _:
             raise ValueError(f"Error Found in procT with the character {expresion[0]}")
     pass
@@ -98,27 +116,54 @@ def procTL(operator: int) -> int:
     global expresion
     if len(expresion) == 0:
         return operator
-    #we have to check if the next operator is an multiplication 
+    # We have to check if the next operator is a multiplication 
     if expresion[0] == "*":
-        print("proc TL No")
         advance("*")
-        return (operator * procTL(procP()))
-    elif expresion[0] == "/":
-        print("proc TL Si")
-        advance("/")
-        return (operator / procTL(procP()))
+        resultado = procTL(procDivicion())
+        resultado = operator * resultado
+        return resultado
     elif expresion[0] == "+" or expresion[0] == "-":
-        print("proc TL " + str(operator))
         return operator
     elif expresion[0] == "(":
-        print("proc TL Si (")
         return procTL(procP())
     elif expresion[0] == ")":
-        print("proc TL Si )")
         return operator
     else:
         raise ValueError(f"Error Found in procTL with the character {expresion[0]}")
+    pass
 
+def procDivicion():
+    global expresion
+    symbol: str = expresion[0]
+    match symbol:
+        case _ if regex.match(r'[0-9]+', symbol) or symbol == "-":
+            resultado = procDivisionL(procP())
+            return resultado
+        case _ if symbol == '(':
+            return procDivisionL(procP()) 
+        case _:
+            raise ValueError(f"Error Found in procT with the character {expresion[0]}")
+    pass
+
+
+def procDivisionL(operator: int) -> int:
+    global expresion
+    if len(expresion) == 0:
+        return operator
+    # We have to check if the next operator is a multiplication 
+    if expresion[0] == "/":
+        advance("/")
+        resultado = procDivisionL(procP())
+        resultado = operator / resultado
+        return resultado
+    elif expresion[0] == "+" or expresion[0] == "-" or expresion[0] == "*":
+        return operator
+    elif expresion[0] == "(":
+        return procTL(procP())
+    elif expresion[0] == ")":
+        return operator
+    else:
+        raise ValueError(f"Error Found in procDivisionL with the character {expresion[0]}")
     pass
 
 def procP() -> int:
@@ -126,11 +171,9 @@ def procP() -> int:
     symbol: str = expresion[0]
     match symbol:
         case _ if regex.match(r'[0-9]+', symbol) or symbol == "-":
-            print("procT " + symbol)
             return procPL(procF())
         case _ if symbol == '(':
-            print("Si")
-            return procPL(procF()) #Este es se llama a si mismo en lugar de bajar 
+            return procPL(procF()) 
         case _:
             raise ValueError(f"Error Found in procP with the character {expresion[0]}")
     pass
@@ -144,9 +187,8 @@ def procPL(operator: int) -> int:
         case '^':
             advance("^")
             numero = operator ** procPL(procF())
-            print("numero:" + str(numero))
-            return(numero)
-        case _ if symbol == "*" or symbol == "/" or symbol =="+" or symbol == "-":
+            return numero
+        case _ if symbol == "*" or symbol == "/" or symbol == "+" or symbol == "-":
             return operator
         case _ if symbol == "":
             return operator
@@ -156,24 +198,19 @@ def procPL(operator: int) -> int:
             raise ValueError(f"Error Found in procPL with the character {expresion[0]}")
     pass
 
-
 def procF() -> int:
     global expresion
     symbol: str = expresion[0]
     match symbol:
         case '(':
             advance("(")
-            if expresion[0] == "-" and regex.match(r'[0-9]+', expresion[1]):
-                advance("-")
-                resultado = procE() * -1
-            else:    
-                resultado = procE()
+            resultado = procE()
             advance(")")
             return resultado
         case _ if regex.match(r'[0-9]+', symbol):
-            return(get_operator())
+            return get_operator()
         case _ if symbol == "-":
-            #check if the next value is a number
+            # Check if the next value is a number
             if regex.match(r'[0-9]+', expresion[1]):
                 advance("-")
                 numero = get_operator() * -1
@@ -181,19 +218,17 @@ def procF() -> int:
         case _:
             raise ValueError(f"Error Found in procF with the character {expresion[0]}")
         
-
 def get_operator() -> int:
     global expresion
-    operator:str = ""
-    for i in expresion:
+    operator: str = ""
+    for i in expresion: 
         if i in ["+", "*", ")", "^", "−", "-", "/"]: 
             break
         else:
             operator += i
 
     expresion = expresion.replace(operator, "", 1)
-    print("getting operator: " + operator)
-    #try to convert to int if the value is double we try that too
+    # Try to convert to int; if the value is double we try that too
     try:
         return int(operator)
     except ValueError:
@@ -210,10 +245,9 @@ def advance(symbol):
     else:
         raise ValueError(f"Error Found in advance with the character {expresion[0]}")
 
-
 def check(cadena: str) -> bool:
     prohibited_patterns = [
-        r'[A-Za-z]+', #all tipes of letters 
+        r'[A-Za-z]+', # All types of letters 
     ]
 
     for pattern in prohibited_patterns:
@@ -223,8 +257,4 @@ def check(cadena: str) -> bool:
 
     return True
     
-
 main()
-
-
-
